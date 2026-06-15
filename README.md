@@ -1,6 +1,13 @@
 
 # 🎓 LectureMind AI Pro
 
+
+![Python](https://img.shields.io/badge/Python-3.10+-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-App-red)
+![Gemini](https://img.shields.io/badge/Google-Gemini-orange)
+![Whisper](https://img.shields.io/badge/OpenAI-Whisper-green)
+
+
 An AI-powered lecture learning assistant that transforms audio recordings into structured study resources including notes, quizzes, flashcards, and interactive Q&A.
 
 ---
