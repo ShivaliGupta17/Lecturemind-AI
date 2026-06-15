@@ -25,8 +25,19 @@ def generate_notes(model,text):
     {text}
     """
 
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+
+    except ResourceExhausted:
+        return """
+⚠️ Gemini API quota exceeded.
+
+Please:
+1. Wait a few minutes
+2. Use another API key
+3. Upgrade Gemini quota
+"""
 
 
 def generate_quiz(model,text, quiz_questions):
@@ -55,8 +66,19 @@ def generate_quiz(model,text, quiz_questions):
     {text}
     """
 
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+
+    except ResourceExhausted:
+        return """
+⚠️ Gemini API quota exceeded.
+
+Please:
+1. Wait a few minutes
+2. Use another API key
+3. Upgrade Gemini quota
+"""
 
 
 def generate_flashcards(model,text,flashcard_count):
@@ -81,8 +103,14 @@ def generate_flashcards(model,text,flashcard_count):
     {text}
     """
 
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+
+    except ResourceExhausted:
+        return """
+⚠️ Gemini API quota exceeded while generating flashcards.
+"""
 
 
 def ask_question(model,transcript, question):
@@ -100,5 +128,12 @@ def ask_question(model,transcript, question):
     {question}
     """
 
-    response = model.generate_content(prompt)
-    return response.text
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+
+    except ResourceExhausted:
+        return """
+⚠️ Gemini API quota exceeded.
+Please try again later.
+"""
