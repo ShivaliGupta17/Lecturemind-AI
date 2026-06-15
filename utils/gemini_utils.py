@@ -2,60 +2,78 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 
-load_dotenv()
 
-genai.configure(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+def configure_gemini(api_key):
+    genai.configure(api_key=api_key)
+    return genai.GenerativeModel("gemini-2.5-flash")
 
-model = genai.GenerativeModel(
-    "gemini-2.5-flash"
-)
 
-def generate_notes(text):
+
+def generate_notes(model,text):
 
     prompt = f"""
-    Convert the following lecture transcript
-    into structured study notes.
+    Create professional study notes from the transcript.
+
+    Include:
+    1. Title
+    2. Key Concepts
+    3. Important Points
+    4. Summary
+    5. Exam Notes
 
     Transcript:
     {text}
     """
 
     response = model.generate_content(prompt)
-
-    print(response.text)
-
     return response.text
-def generate_quiz(text):
+
+
+def generate_quiz(model,text, quiz_questions):
 
     prompt = f"""
-    Create 5 MCQ questions from this lecture.
+    Create EXACTLY {quiz_questions} MCQs.
+
+    Rules:
+    -The total number of questions must be {quiz_questions}.
+    -Do not stop early.
+    -Do not generate more than {quiz_questions}.
+    - Generate exactly {quiz_questions} questions.
+    - Put every option on a NEW LINE.
+    - Use format:
+
+    Q1. Question
+
+    A) Option A
+    B) Option B
+    C) Option C
+    D) Option D
+
+    Correct Answer: A
 
     Transcript:
     {text}
-
-    Format:
-
-    Q1.
-    A)
-    B)
-    C)
-    D)
-
-    Correct Answer:
     """
 
     response = model.generate_content(prompt)
-
     return response.text
-def generate_flashcards(text):
+
+
+def generate_flashcards(model,text,flashcard_count):
 
     prompt = f"""
-    Create 10 flashcards from this lecture.
+    Create EXACTLY {flashcard_count} flashcards.
+    The total number of flashcards must be {flashcard_count}.
+    Do not stop early.
+    Do not generate more than {flashcard_count}.
 
     Format:
 
+    Flashcard 1
+    Q: Question
+    A: Answer
+
+    Flashcard 2
     Q: Question
     A: Answer
 
@@ -64,12 +82,16 @@ def generate_flashcards(text):
     """
 
     response = model.generate_content(prompt)
-
     return response.text
-def ask_question(transcript, question):
+
+
+def ask_question(model,transcript, question):
 
     prompt = f"""
-    Answer ONLY from the lecture transcript.
+    Answer ONLY using the lecture transcript.
+
+    If the answer is not present, reply:
+    'The information is not available in the lecture.'
 
     Transcript:
     {transcript}
@@ -79,5 +101,4 @@ def ask_question(transcript, question):
     """
 
     response = model.generate_content(prompt)
-
     return response.text
