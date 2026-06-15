@@ -1,7 +1,13 @@
+
+import os
 import streamlit as st
+from io import BytesIO
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
 from utils.transcribe import transcribe_audio
 
+from utils.gemini_utils import configure_gemini
 from utils.gemini_utils import (
     generate_notes,
     generate_quiz,
@@ -9,114 +15,111 @@ from utils.gemini_utils import (
     ask_question
 )
 
-# ---------------- PAGE CONFIG ----------------
-
 st.set_page_config(
-    page_title="LectureMind AI ",
+    page_title="LectureMind AI Pro",
     page_icon="🎓",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
-
-# ---------------- CUSTOM CSS ----------------
 
 st.markdown("""
 <style>
-
-.main {
-    background-color: #f8fafc;
+.block-container{padding-top:1rem;}
+.hero{
+padding:30px;border-radius:20px;
+background:linear-gradient(135deg,#2563eb,#7c3aed);
+color:white;text-align:center;margin-bottom:20px;
 }
-
-.stButton > button {
-    width: 100%;
-    border-radius: 12px;
-    height: 3em;
-    font-weight: bold;
+.card{
+padding:15px;border-radius:15px;
+border:1px solid #e5e7eb;background:#fafafa;
 }
-
-h1 {
-    color: #2563eb;
-}
-
-.stTextArea textarea {
-    border-radius: 10px;
-}
-
-div[data-testid="stMetric"] {
-    background-color: white;
-    padding: 15px;
-    border-radius: 10px;
-}
-
+.stButton>button{width:100%;border-radius:10px;}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- HEADER ----------------
+def create_pdf(text, title):
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer)
+    styles = getSampleStyleSheet()
+    story = [Paragraph(title, styles["Title"]), Spacer(1, 12)]
+    for line in text.split("\n"):
+        if line.strip():
+            story.append(Paragraph(line, styles["BodyText"]))
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
-st.markdown(
-    """
-    <h1 style='text-align:center;'>
-        🎓 LectureMind AI
-    </h1>
+# HERO
+st.markdown("""
+<div class="hero">
+<h1>🎓 LectureMind AI Pro</h1>
+<h3>AI-Powered Lecture Learning Assistant</h3>
+<p>Upload Audio → Transcript → Notes → Quiz → Flashcards → AI Tutor</p>
+</div>
+""", unsafe_allow_html=True)
 
-    <p style='text-align:center; font-size:18px; color:gray;'>
-        Convert Lecture Audio → Transcript → Notes → Quiz → Flashcards
-    </p>
-    """,
-    unsafe_allow_html=True
-)
-
-# ---------------- SIDEBAR ----------------
-
+# SIDEBAR
 with st.sidebar:
+    st.title("⚙️ Control Panel")
 
-    st.title("📚 Project Info")
+    api_key = st.text_input("🔑 Gemini API Key", type="password")
 
-    st.info(
-        """
-        AI Lecture Assistant
-
-        ✅ Speech To Text
-
-        ✅ Notes Generator
-
-        ✅ Quiz Generator
-
-        ✅ Flashcards Generator
-
-        ✅ Q&A Assistant
-        """
+    st.caption("Get your Gemini API Key from Google AI Studio")
+    st.link_button(
+        "🔗 Get Gemini API Key",
+        "https://aistudio.google.com/apikey"
     )
 
-# ---------------- FILE UPLOAD ----------------
+    st.markdown("---")
 
+    st.subheader("🎯 Generation Settings")
+    quiz_questions = st.slider("Quiz Questions", 5, 30, 10)
+    flashcard_count = st.slider("Flashcards", 5, 50, 20)
+
+    st.markdown("---")
+
+    st.subheader("🚀 Features")
+    st.markdown("""
+- ✅ Speech To Text
+- ✅ Smart Notes
+- ✅ MCQ Generator
+- ✅ Flashcards
+- ✅ AI Tutor
+- ✅ PDF Export
+- ✅ Transcript Analytics
+""")
+
+    st.markdown("---")
+
+    st.subheader("📖 About")
+    st.info(
+        "LectureMind AI converts lecture recordings into structured study material."
+    )
+
+    st.markdown("---")
+
+    st.link_button("🌐 GitHub", "https://github.com/ShivaliGupta17/Lecturemind-AI")
+    st.link_button("💼 LinkedIn", "https://www.linkedin.com/in/shivali-gupta-7245b9353/")
+
+
+
+
+
+model = None
+
+if api_key:
+    try:
+        model = configure_gemini(api_key)
+        st.sidebar.success("✅ API Key Connected")
+    except Exception as e:
+        st.sidebar.error(f"❌ {e}")
+
+# Upload
 audio_file = st.file_uploader(
     "🎤 Upload Lecture Audio",
     type=["mp3", "wav", "m4a"]
 )
-
-# ---------------- STATUS CARDS ----------------
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric(
-        "🎤 Audio",
-        "Uploaded" if audio_file else "Pending"
-    )
-
-with col2:
-    st.metric(
-        "📝 Transcript",
-        "Ready" if "transcript" in st.session_state else "Pending"
-    )
-
-with col3:
-    st.metric(
-        "📚 Notes",
-        "Ready" if "notes" in st.session_state else "Pending"
-    )
-
-# ---------------- MAIN APP ----------------
 
 if audio_file:
 
@@ -125,134 +128,168 @@ if audio_file:
 
     st.success("✅ Audio Uploaded Successfully")
 
-    # Transcript Button
-
     if st.button("📝 Generate Transcript"):
 
-        with st.spinner("Generating Transcript..."):
-
-            transcript = transcribe_audio(
-                "lecture.wav"
-            )
-
-            st.session_state["transcript"] = transcript
-
-    # Show Transcript
+        with st.spinner("Transcribing Audio..."):
+            st.session_state["transcript"] = transcribe_audio("lecture.wav")
 
     if "transcript" in st.session_state:
+
+        transcript = st.session_state["transcript"]
+
+        words = len(transcript.split())
+        read_time = max(1, words // 200)
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        c1.metric("📝 Words", words)
+        c2.metric("⏱ Read Time", f"{read_time} min")
+        c3.metric("🎯 Quiz Count", quiz_questions)
+        c4.metric("🎴 Flashcards", flashcard_count)
 
         st.subheader("📝 Transcript")
 
         st.text_area(
             "Transcript Output",
-            st.session_state["transcript"],
+            transcript,
             height=250
         )
 
-        st.divider()
-
-        # TABS
-
         tab1, tab2, tab3, tab4 = st.tabs(
-            [
-                "📚 Notes",
-                "📝 Quiz",
-                "🎴 Flashcards",
-                "💬 Q&A"
-            ]
+            ["📚 Notes", "📝 Quiz", "🎴 Flashcards", "🤖 AI Tutor"]
         )
 
-        # ---------------- NOTES ----------------
-
+        # NOTES
         with tab1:
 
             if st.button("📚 Generate Notes"):
+                
+
+                if model is None:
+                    st.error("⚠️ Please enter a valid Gemini API Key first.")
+                    st.stop()
 
                 with st.spinner("Generating Notes..."):
-
-                    notes = generate_notes(
-                        st.session_state["transcript"]
+                    st.session_state["notes"] = generate_notes(
+                        model,
+                        transcript
                     )
 
-                    st.session_state["notes"] = notes
+                with st.spinner("Generating Notes..."):
+                    st.session_state["notes"] = generate_notes(model,transcript)
 
             if "notes" in st.session_state:
 
-                st.subheader("📚 Study Notes")
+                st.markdown(st.session_state["notes"])
 
-                st.write(
-                    st.session_state["notes"]
+                st.download_button(
+                    "⬇ Download Notes TXT",
+                    st.session_state["notes"],
+                    file_name="notes.txt"
                 )
 
-        # ---------------- QUIZ ----------------
+                st.download_button(
+                    "📄 Download Notes PDF",
+                    create_pdf(st.session_state["notes"], "Lecture Notes"),
+                    file_name="notes.pdf"
+                )
 
+        # QUIZ
         with tab2:
 
             if st.button("📝 Generate Quiz"):
+                if model is None:
+                    st.error("⚠️ Please enter a valid Gemini API Key first.")
+                    st.stop()
 
                 with st.spinner("Generating Quiz..."):
-
-                    quiz = generate_quiz(
-                        st.session_state["transcript"]
+                    st.session_state["quiz"] = generate_quiz(
+                        model,
+                        transcript,
+                        quiz_questions
                     )
 
-                    st.session_state["quiz"] = quiz
+                with st.spinner("Generating Quiz..."):
+                    st.session_state["quiz"] = generate_quiz(
+                        model,
+                        transcript,
+                        quiz_questions
+                    )
 
             if "quiz" in st.session_state:
 
-                st.subheader("📝 Quiz")
+                st.markdown(st.session_state["quiz"])
 
-                st.write(
-                    st.session_state["quiz"]
+                st.download_button(
+                    "⬇ Download Quiz",
+                    st.session_state["quiz"],
+                    file_name="quiz.txt"
                 )
 
-        # ---------------- FLASHCARDS ----------------
-
+        # FLASHCARDS
         with tab3:
 
             if st.button("🎴 Generate Flashcards"):
+                
+                if model is None:
+                    st.error("⚠️ Please enter a valid Gemini API Key first.")
+                    st.stop()
 
                 with st.spinner("Generating Flashcards..."):
-
-                    flashcards = generate_flashcards(
-                        st.session_state["transcript"]
+                    st.session_state["flashcards"] = generate_flashcards(
+                    model,
+                    transcript,
+                    flashcard_count
                     )
 
-                    st.session_state["flashcards"] = flashcards
+                with st.spinner("Generating Flashcards..."):
+                    st.session_state["flashcards"] = generate_flashcards(
+                        model,
+                        transcript,
+                        flashcard_count
+                    )
 
             if "flashcards" in st.session_state:
 
-                st.subheader("🎴 Flashcards")
+                st.markdown(st.session_state["flashcards"])
 
-                st.write(
-                    st.session_state["flashcards"]
+                st.download_button(
+                    "⬇ Download Flashcards",
+                    st.session_state["flashcards"],
+                    file_name="flashcards.txt"
                 )
 
-        # ---------------- Q&A ----------------
-
+        # AI TUTOR
         with tab4:
 
-            question = st.text_input(
-                "Ask anything from the lecture"
+            if "chat_history" not in st.session_state:
+                st.session_state["chat_history"] = []
+
+            for role, msg in st.session_state["chat_history"]:
+                with st.chat_message(role):
+                    st.write(msg)
+
+            question = st.chat_input(
+                "Ask anything from the lecture..."
             )
 
-            if st.button("🤖 Ask"):
+            if question:
 
-                if question.strip():
-
-                    with st.spinner("Generating Answer..."):
-
-                        answer = ask_question(
-                            st.session_state["transcript"],
-                            question
-                        )
-
-                        st.session_state["answer"] = answer
-
-            if "answer" in st.session_state:
-
-                st.subheader("🤖 Answer")
-
-                st.write(
-                    st.session_state["answer"]
+                st.session_state["chat_history"].append(
+                    ("user", question)
                 )
+
+                answer = ask_question(
+                    model,
+                    transcript,
+                    question
+                )
+
+                st.session_state["chat_history"].append(
+                    ("assistant", answer)
+                )
+
+                st.rerun()
+
+st.markdown("---")
+st.caption("🚀 LectureMind AI Pro | Built with Streamlit + Gemini")
